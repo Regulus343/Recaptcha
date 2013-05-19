@@ -41,6 +41,8 @@
  * THE SOFTWARE.
  */
 
+use Illuminate\Support\Facades\Config;
+
 /**
  * The reCAPTCHA server URLs
  */
@@ -111,8 +113,9 @@ class Recaptcha {
 	 * @param boolean $useSSL Should the request be made over ssl? (optional, default is false)
 	 * @return string - The HTML to be embedded in the user's form.
 	 */
-	public static function recaptchaGetHTML($pubkey, $error = null, $useSSL = false)
+	public static function recaptchaGetHTML($error = null, $useSSL = false)
 	{
+		$pubkey = Config::get('recaptcha::publicKey');
 		if ($pubkey == null || $pubkey == '') {
 			die ("To use reCAPTCHA you must get an API key from <a href='https://www.google.com/recaptcha/admin/create'>https://www.google.com/recaptcha/admin/create</a>");
 		}
@@ -137,15 +140,15 @@ class Recaptcha {
 
 	/**
 	  * Calls an HTTP POST function to verify if the user's guess was correct
-	  * @param string $privkey
 	  * @param string $remoteip
 	  * @param string $challenge
 	  * @param string $response
 	  * @param array $extraParams an array of extra variables to post to the server
 	  * @return ReCaptchaResponse
 	  */
-	public static function recaptchaCheckAnswer($privkey, $remoteip, $challenge, $response, $extraParams = array())
+	public static function recaptchaCheckAnswer($remoteip, $challenge, $response, $extraParams = array())
 	{
+		$privkey = Config::get('recaptcha::privateKey');
 		if ($privkey == null || $privkey == '') {
 			die ("To use reCAPTCHA you must get an API key from <a href='https://www.google.com/recaptcha/admin/create'>https://www.google.com/recaptcha/admin/create</a>");
 		}
@@ -221,8 +224,10 @@ class Recaptcha {
 	}
 
 	/* gets the reCAPTCHA Mailhide url for a given email, public key and private key */
-	protected static function recaptchaMailhideURL($pubkey, $privkey, $email)
+	protected static function recaptchaMailhideURL($email)
 	{
+		$pubkey  = Config::get('recaptcha::publicKey');
+		$privkey = Config::get('recaptcha::privateKey');
 		if ($pubkey == '' || $pubkey == null || $privkey == "" || $privkey == null) {
 			die ("To use reCAPTCHA Mailhide, you have to sign up for a public and private key, " .
 				 "you can do so at <a href='http://www.google.com/recaptcha/mailhide/apikey'>http://www.google.com/recaptcha/mailhide/apikey</a>");
@@ -259,8 +264,10 @@ class Recaptcha {
 	 *
 	 * http://www.google.com/recaptcha/mailhide/apikey
 	 */
-	protected static function recaptchaMailhideHTML($pubkey, $privkey, $email)
+	protected static function recaptchaMailhideHTML($email)
 	{
+		$pubkey     = Config::get('recaptcha::publicKey');
+		$privkey    = Config::get('recaptcha::privateKey');
 		$emailParts = static::_recaptchaMailhideEmailParts($email);
 		$url        = static::recaptchaMailhideURL($pubkey, $privkey, $email);
 
