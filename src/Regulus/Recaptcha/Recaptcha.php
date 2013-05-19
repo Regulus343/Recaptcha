@@ -52,24 +52,29 @@ define("RECAPTCHA_VERIFY_SERVER", "www.google.com");
 
 class Recaptcha {
 
+	public static $recaptchaChecked = false;
+	public static $recaptchaResult  = false;
+
 	/**
 	 * Encodes the given data into a query string format
+	 *
 	 * @param $data - array of string elements to be encoded
 	 * @return string - encoded request
 	 */
 	protected static function _recaptchaQsencode($data)
 	{
-			$req = "";
-			foreach ( $data as $key => $value )
-					$req .= $key . '=' . urlencode( stripslashes($value) ) . '&';
+		$req = "";
+		foreach ( $data as $key => $value )
+				$req .= $key . '=' . urlencode( stripslashes($value) ) . '&';
 
-			// Cut the last '&'
-			$req=substr($req,0,strlen($req)-1);
-			return $req;
+		// Cut the last '&'
+		$req=substr($req,0,strlen($req)-1);
+		return $req;
 	}
 
 	/**
 	 * Submits an HTTP POST to a reCAPTCHA server
+	 *
 	 * @param string $host
 	 * @param string $path
 	 * @param array $data
@@ -78,36 +83,35 @@ class Recaptcha {
 	 */
 	protected static function _recaptchaHttpPost($host, $path, $data, $port = 80)
 	{
+		$req = static::_recaptchaQsencode ($data);
 
-			$req = static::_recaptchaQsencode ($data);
+		$httpRequest  = "POST $path HTTP/1.0\r\n";
+		$httpRequest .= "Host: $host\r\n";
+		$httpRequest .= "Content-Type: application/x-www-form-urlencoded;\r\n";
+		$httpRequest .= "Content-Length: " . strlen($req) . "\r\n";
+		$httpRequest .= "User-Agent: reCAPTCHA/PHP\r\n";
+		$httpRequest .= "\r\n";
+		$httpRequest .= $req;
 
-			$httpRequest  = "POST $path HTTP/1.0\r\n";
-			$httpRequest .= "Host: $host\r\n";
-			$httpRequest .= "Content-Type: application/x-www-form-urlencoded;\r\n";
-			$httpRequest .= "Content-Length: " . strlen($req) . "\r\n";
-			$httpRequest .= "User-Agent: reCAPTCHA/PHP\r\n";
-			$httpRequest .= "\r\n";
-			$httpRequest .= $req;
+		$response = '';
+		if( false == ( $fs = @fsockopen($host, $port, $errno, $errstr, 10) ) ) {
+			die ('Could not open socket');
+		}
 
-			$response = '';
-			if( false == ( $fs = @fsockopen($host, $port, $errno, $errstr, 10) ) ) {
-					die ('Could not open socket');
-			}
+		fwrite($fs, $httpRequest);
 
-			fwrite($fs, $httpRequest);
+		while (!feof($fs)) $response .= fgets($fs, 1160); // One TCP-IP packet
+		fclose($fs);
+		$response = explode("\r\n\r\n", $response, 2);
 
-			while (!feof($fs))
-					$response .= fgets($fs, 1160); // One TCP-IP packet
-			fclose($fs);
-			$response = explode("\r\n\r\n", $response, 2);
-
-			return $response;
+		return $response;
 	}
 
 	/**
 	 * Gets the challenge HTML (javascript and non-javascript version).
 	 * This is called from the browser, and the resulting reCAPTCHA HTML widget
 	 * is embedded within the HTML form it was called from.
+	 *
 	 * @param string $pubkey A public key for reCAPTCHA
 	 * @param string $error The error given by reCAPTCHA (optional, default is null)
 	 * @param boolean $useSSL Should the request be made over ssl? (optional, default is false)
@@ -140,7 +144,7 @@ class Recaptcha {
 
 	/**
 	  * Calls an HTTP POST function to verify if the user's guess was correct
-	  * @param string $remoteip
+	  *
 	  * @param string $challenge
 	  * @param string $response
 	  * @param array $extraParams an array of extra variables to post to the server
@@ -161,10 +165,18 @@ class Recaptcha {
 
 		//discard spam submissions
 		if ($challenge == null || strlen($challenge) == 0 || $response == null || strlen($response) == 0) {
-				$recaptchaResponse = new RecaptchaResponse();
-				$recaptchaResponse->isValid = false;
-				$recaptchaResponse->error = 'incorrect-captcha-sol';
-				return $recaptchaResponse;
+			$recaptchaResponse = new RecaptchaResponse();
+			$recaptchaResponse->isValid = false;
+			$recaptchaResponse->error = 'incorrect-captcha-sol';
+			return $recaptchaResponse;
+		}
+
+		//check if recaptcha already checked
+		if (static::$recaptchaChecked) {
+			$recaptchaResponse = new RecaptchaResponse();
+			$recaptchaResponse->isValid = static::$recaptchaResult;
+			if (!static::$recaptchaResult) $recaptchaResponse->error = 'incorrect-captcha-sol';
+			return $recaptchaResponse;
 		}
 
 		$response = static::_recaptchaHttpPost(RECAPTCHA_VERIFY_SERVER, "/recaptcha/api/verify",
@@ -179,8 +191,11 @@ class Recaptcha {
 		$answers           = explode("\n", $response[1]);
 		$recaptchaResponse = new RecaptchaResponse();
 
-		if (trim($answers[0]) == 'true') {
-				$recaptchaResponse->isValid = true;
+		static::$recaptchaChecked = true;
+		static::$recaptchaResult  = trim($answers[0]) == "true" ? true : false;
+
+		if (static::$recaptchaResult) {
+			$recaptchaResponse->isValid = true;
 		} else {
 			$recaptchaResponse->isValid = false;
 			$recaptchaResponse->error = $answers[1];
@@ -192,6 +207,7 @@ class Recaptcha {
 	 * gets a URL where the user can sign up for reCAPTCHA. If your application
 	 * has a configuration page where you enter a key, you should provide a link
 	 * using this function.
+	 *
 	 * @param string $domain The domain where the page is hosted
 	 * @param string $appname The name of your application
 	 */
@@ -235,8 +251,8 @@ class Recaptcha {
 				 "you can do so at <a href='http://www.google.com/recaptcha/mailhide/apikey'>http://www.google.com/recaptcha/mailhide/apikey</a>");
 		}
 
-		$ky = pack('H*', $privkey);
-		$cryptmail =static::_recaptchaAesEncrypt($email, $ky);
+		$ky        = pack('H*', $privkey);
+		$cryptmail = static::_recaptchaAesEncrypt($email, $ky);
 
 		return "http://www.google.com/recaptcha/mailhide/d?k=" . $pubkey . "&c=" . static::_recaptchaMailhideUrlBase64($cryptmail);
 	}
