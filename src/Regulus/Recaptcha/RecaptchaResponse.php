@@ -1,3 +1,5 @@
+<?php namespace Regulus\Recaptcha;
+
 /**
  * A ReCaptchaResponse is returned from recaptchaCheckAnswer()
  */

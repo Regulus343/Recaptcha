@@ -2,6 +2,9 @@
 
 use Illuminate\Support\ServiceProvider;
 
+use Illuminate\Support\Facades\Input;
+use Illuminate\Support\Facades\Validator;
+
 class RecaptchaServiceProvider extends ServiceProvider {
 
 	/**
@@ -19,6 +22,14 @@ class RecaptchaServiceProvider extends ServiceProvider {
 	public function boot()
 	{
 		$this->package('regulus/recaptcha');
+
+		//setup validation rule
+		Validator::extend('recaptcha', function($attribute, $value, $parameters)
+		{
+			$resp = Recaptcha::checkAnswer(Input::get('recaptcha_challenge_field'), $value);
+			if ($resp->isValid) return true;
+			return false;
+		});
 	}
 
 	/**

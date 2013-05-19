@@ -113,7 +113,7 @@ class Recaptcha {
 	 * @param boolean $useSSL Should the request be made over ssl? (optional, default is false)
 	 * @return string - The HTML to be embedded in the user's form.
 	 */
-	public static function recaptchaGetHTML($error = null, $useSSL = false)
+	public static function getHTML($error = null, $useSSL = false)
 	{
 		$pubkey = Config::get('recaptcha::publicKey');
 		if ($pubkey == null || $pubkey == '') {
@@ -130,12 +130,12 @@ class Recaptcha {
 		if ($error) {
 		   $errorPart = "&amp;error=" . $error;
 		}
-		return '<script type="text/javascript" src="'. $server . '/challenge?k=' . $pubkey . $errorPart . '"></script>
+		return '<div class="recaptcha"><script type="text/javascript" src="'. $server . '/challenge?k=' . $pubkey . $errorPart . '"></script>
 		<noscript>
 			<iframe src="'. $server . '/noscript?k=' . $pubkey . $errorPart . '" height="300" width="500" frameborder="0"></iframe><br/>
 			<textarea name="recaptcha_challenge_field" rows="3" cols="40"></textarea>
 			<input type="hidden" name="recaptcha_response_field" value="manual_challenge"/>
-		</noscript>';
+		</noscript></div>';
 	}
 
 	/**
@@ -146,8 +146,10 @@ class Recaptcha {
 	  * @param array $extraParams an array of extra variables to post to the server
 	  * @return ReCaptchaResponse
 	  */
-	public static function recaptchaCheckAnswer($remoteip, $challenge, $response, $extraParams = array())
+	public static function checkAnswer($challenge, $response, $extraParams = array())
 	{
+		$remoteip = $_SERVER['REMOTE_ADDR'];
+
 		$privkey = Config::get('recaptcha::privateKey');
 		if ($privkey == null || $privkey == '') {
 			die ("To use reCAPTCHA you must get an API key from <a href='https://www.google.com/recaptcha/admin/create'>https://www.google.com/recaptcha/admin/create</a>");
@@ -159,7 +161,7 @@ class Recaptcha {
 
 		//discard spam submissions
 		if ($challenge == null || strlen($challenge) == 0 || $response == null || strlen($response) == 0) {
-				$recaptchaResponse = new ReCaptchaResponse();
+				$recaptchaResponse = new RecaptchaResponse();
 				$recaptchaResponse->isValid = false;
 				$recaptchaResponse->error = 'incorrect-captcha-sol';
 				return $recaptchaResponse;
@@ -175,7 +177,7 @@ class Recaptcha {
 		);
 
 		$answers           = explode("\n", $response[1]);
-		$recaptchaResponse = new ReCaptchaResponse();
+		$recaptchaResponse = new RecaptchaResponse();
 
 		if (trim($answers[0]) == 'true') {
 				$recaptchaResponse->isValid = true;
