@@ -5,7 +5,7 @@
 		A version of the ReCaptcha class adapted for Laravel 4.
 
 		created by Cody Jassman (based on the work of Mike Crawford and Be Maurer, info and license below)
-		last updated on May 18, 2013
+		last updated on May 19, 2013
 ----------------------------------------------------------------------------------------------------------*/
 
 /*
